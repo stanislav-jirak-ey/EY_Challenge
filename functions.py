@@ -2,18 +2,40 @@ import datetime
 from dateutil.relativedelta import relativedelta
 from tqdm import tqdm
 import pandas as pd
+import ast
+import numpy as np
+
+# Planetary Computer Tools
+import pystac
+import pystac_client
+import odc
+from pystac_client import Client
+from pystac.extensions.eo import EOExtension as eo
+from odc.stac import stac_load
+import planetary_computer as pc
+pc.settings.set_subscription_key('100bbb6552514f27a2e52ef1be8d93b6')  # SJ's primary key
+
+# Others
+import requests
+import rich.table
+from itertools import cycle
+from tqdm import tqdm
+import xarray as xr
+tqdm.pandas()
 
 def get_sentinel_data(latlong,time_slice,assets):
     '''
-    Returns VV and VH values for a given latitude and longitude 
-    Attributes:
-    latlong - A tuple with 2 elements - latitude and longitude
-    time_slice - Timeframe for which the VV and VH values have to be extracted
+    Returns VV and VH values for a given latitude and longitude\n
+    Attributes:\n
+    latlong - A tuple with 2 elements - latitude and longitude\n
+    time_slice - Timeframe for which the VV and VH values have to be extracted\n
     assets - A list of bands to be extracted
     '''
 
     #latlong=latlong.replace('(','').replace(')','').replace(' ','').split(',')
     box_size_deg = 0.0008 # Surrounding box in degrees, yields approximately 5x5 pixel region
+    print(latlong)
+    latlong = ast.literal_eval(latlong)
     min_lon = float(latlong[1])-box_size_deg/2
     min_lat = float(latlong[0])-box_size_deg/2
     max_lon = float(latlong[1])+box_size_deg/2
@@ -35,7 +57,7 @@ def get_sentinel_data(latlong,time_slice,assets):
     return vh,vv
 
 
-def convert_date(date_str):
+def _convert_date(date_str) -> datetime.date:
     """
     Takes a string in the 'yyyy-mm-dd' format and returns a datetime.date object.
     """
@@ -43,11 +65,11 @@ def convert_date(date_str):
     return datetime.date(year, month, day)
 
 
-def download_radar_data(latlong, start_date, end_date, assets = ['vh', 'vv'], window_month=1, window_day=0, save=True):
+def download_radar_data(latlong, start_date, end_date, assets = ['vh', 'vv'], window_month=1, window_day=0, save=True) -> pd.DataFrame:
     '''
-    Calls get_sentinel function to download data over a time period with snapshots occuring over given day/month windows.
+    Calls get_sentinel function to download data over a time period with snapshots occuring over given day/month windows.\n
     
-    Parameters:
+    Parameters:\n
     latlong (list of tuples): Latitude and Longitude list of the locations to download data from.\n
     start_date (str): Date from which to begin downloading data in the 'yyyy-mm-dd' format, e.g. '2022-04-01'.\n
     end_date (str): Date on which to end the downloading in the 'yyyy-mm-dd' format, e.g. '2022-06-01'.\n
@@ -62,8 +84,8 @@ def download_radar_data(latlong, start_date, end_date, assets = ['vh', 'vv'], wi
 
 
     # Define start and end dates
-    start_date = convert_date(start_date)
-    end_date = convert_date(end_date)
+    start_date = _convert_date(start_date)
+    end_date = _convert_date(end_date)
 
     # Define list to store data
     data = []
